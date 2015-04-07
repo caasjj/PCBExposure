@@ -65,56 +65,33 @@
 
 
 /** D E C L A R A T I O N S *******************************************/
-unsigned int exposureTime_sec    = 240;
-unsigned int exposureCurrent_mA  = 20;
-unsigned int timerLoadValue = TMR1_LOAD_VALUE;
+unsigned int  exposureTime_sec    = 240;
+unsigned int  exposureCurrent_mA  = 20;
+unsigned long systemTime = 0L;
 
-char dummy1, dummy2;
-
-unsigned int dummy3 = 600;
-unsigned int dummy4;
+unsigned int dummy;
 
 void init(void);
 
 void main (void)
 {
 
-  dummy1 = Read_b_eep(0x00);
-  dummy2 = Read_b_eep(0x01);
+//  dummy1 = Read_b_eep(0x00);
+//  dummy2 = Read_b_eep(0x01);
 
-  char dummyConfig = TMR1_CONFIG;
-
-  WriteTimer1(timerLoadValue);
-  OpenTimer1(dummyConfig);  //API configures the tmer1 as per user defined
-
-  // WARNING: MAIN REASON WHY LCD WSA NOT WORKING ... T1OSC used instead
-  // of portc bit 0 digital output %$@#!$. This doesn't matter anymore,
-  // since we switched to 4 bit interface.
-  // T1OSCEN   = 0;
-
-  TRISA     = 0b01000001; 	    // PORTA bit 3 to output (0) ; other bits are inputs (1)
-  TRISB     = 0xf0;             // make lower 4 bits of PORTB outputs for the LCD RW/EN/RS signals
-
-  PEIE      = 1;                // enable peripheral interrupts
-//  INT1IE    = 1;                // enable interrupt 1
-  TMR1IE    = 1;                // enable timer 1 interrupt
+  //TRISA     = 0b01000001; 	    // PORTA bit 3 to output (0) ; other bits are inputs (1)
+  //PORT_IO_INIT();
 
   OSCCON    = 0x73;             // internal clock at 8MHz
-  TMR1IP    = 1;                // timer 1 at high priority interrupt
-//  INT1IP    = 0;                // interrupt 1 is low priority interrupt
-//  INT2IP    = 0;                // interrupt 2 is also low priority
-  IPEN      = 1;                // enable interrupt prioritization
-  ei();
-  
-  printf("Hello, world!\n");
-
-  // Initialize the LCD
-  LCDInit();
-  LCDWelcomeMessage();
 
   init();
-  
-  LATA3 = 1;
+
+  IPEN      = 1;                // enable interrupt prioritization
+  PEIE      = 1;                // enable peripheral interrupts
+  ei();
+
+  PANEL_PWM_ON_OFF_STATUS_LED(1);
+
   while (1){};
 
 }
@@ -122,7 +99,8 @@ void main (void)
 void interrupt InterruptServiceHigh(void) {
 
   if (TMR1IF) {
-
+    systemTime++;
+    
     // If Timer Interrupt
     //   If !CounterButtonActive
     //       If RisingEdge
@@ -146,20 +124,24 @@ void interrupt InterruptServiceHigh(void) {
     //           numUpdates = 0
     //           TargetUpdateDelta back to original value
 
-    LATA2 = ~LATA2;
-    WriteTimer1(timerLoadValue);
+    PANEL_SYSTEM_ON_OFF_STATUS_LED_TOGGLE();
+    TIMER_RESTART();
 
-    if (--dummy3 == 0) {
-      LATA3 = 0;
+    if ( systemTime % 600 == 0) {
+      PANEL_PWM_ON_OFF_STATUS_LED(0);
+    }
+
+    if (systemTime % 5 == 0) {
+      SYSTEM_UV_LED_PWM_LATCH = ~SYSTEM_UV_LED_PWM_LATCH;
     }
     
-    TMR1IF = 0;
-    INT1IF = 0;
+    TIMER_INT_CLR();
+
     ConvertADC();
 
   } else if (ADIF) {
-    dummy4 = ReadADC();
-    ADIF = 0;
+    dummy = ReadADC();
+    ADC_INT_CLR();
   }
 
 }
@@ -174,11 +156,15 @@ void interrupt low_priority InterruptServiceLow(void)
 
 void init() {
 
+    // Initialize PORTA IO pins
+    PORT_IO_INIT();
+    
     // Initialize LCD
+    LCDInit();
+    LCDWelcomeMessage();
 
     // Initialize ADC
-    OpenADC(ADC_CONFIG, ADC_CONFIG2, ADC_PORT_CONFIG);
-    ADC_INT_ENABLE();
+    ADC_INIT();
     
     // assign ADC pin RA1/AN1 to CountUp/CountDown of ExposureTime/Intensity as selected above
 
@@ -194,7 +180,8 @@ void init() {
 
     // assign pin
     // set up timer to run at 100Hz with high priority interrupt
-
+    TIMER_INIT();
+    
     // read ExposureTime and IntensityValue from EEPROM
 
     // Update Display with Timer and Intensity Values
