@@ -32,15 +32,17 @@ extern "C" {
 
 
 /**  S Y S T E M   C O N S T A N T S   *************************************/
-#define FOSC                    8000000
-#define SYS_CLK_FREQ_HZ         FOSC / 4
-#define SYS_CLK_FREQ_kHZ        SYS_CLK_FREQ_HZ / 1000
-#define HIGH_PRIORITY_INT       1
-#define LOW_PRIORITY_INT        0
-#define SYSTEM_INIT_STATE       0
-#define SYSTEM_IDLE_STATE       1
-#define SYSTEM_RUNNING_STATE    2
-    
+#define FOSC                        8000000
+#define SYS_CLK_FREQ_HZ             FOSC / 4
+#define SYS_CLK_FREQ_kHZ            SYS_CLK_FREQ_HZ / 1000
+#define HIGH_PRIORITY_INT           1
+#define LOW_PRIORITY_INT            0
+#define SYSTEM_INIT_STATE           0
+#define SYSTEM_IDLE_STATE           1
+#define SYSTEM_RUNNING_STATE        2
+#define SYSTEM_BUTTON_HOLD_TIME_MS  200 // must be integer multiple of system timer tick
+#define SYSTEM_MAX_EXPOSURE_TIME_S  300U
+
 /**  G E R I C   U S E   M A C R O S   ************************************/
 #define MAKE_PORT_OUTPUT(port, pin)             port &= ~(1 << pin)
 #define MAKE_PORT_INPUT(port, pin)              port |= (1 << pin )

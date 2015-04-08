@@ -50,22 +50,23 @@
 #include <plib/EEP.h>
 
 /** D E C L A R A T I O N S *******************************************/
-unsigned int    exposureTime_sec            = 10;
-unsigned char   exposureIntensity_percent   = 20;
-unsigned long   systemTime_tick             = 0L;
-
 
 unsigned char   systemState                 = SYSTEM_INIT_STATE;
-unsigned int    systemUvTimer_ticks         = 0;
 char            systemTick                  = 0;
-
 void            systemInit(void);
 char            systemRun(void);
 char            systemIdle(void);
 char            systemToggle(void);
 char            systemProcessCommand(char);
+
+int             exposureTime_sec            = 10UL;
+char            exposureIntensity_percent   = 20UL;
+unsigned long   systemTime_tick             =  0UL;
+unsigned int    exposureTimer_ticks         = 0;
 char            command;
 int             fault = 0;
+int             holdTime = 0;
+int             holdDelta = 1;
 
 void main (void)
 {
@@ -108,9 +109,9 @@ void main (void)
         systemProcessCommand(command);
       }
 
-      if (systemUvTimer_ticks) {
-        systemUvTimer_ticks--;
-        if (!systemUvTimer_ticks) {
+      if (exposureTimer_ticks) {
+        exposureTimer_ticks--;
+        if (!exposureTimer_ticks) {
           systemIdle();
         }
       }
@@ -180,26 +181,85 @@ char systemProcessCommand(char cmd) {
         case NULL_COMMAND:
           break;
         case COUNT_DOWN_PRESSED(COUNT_BUTTON_TIMER_OFFSET):
+          if (exposureTime_sec > 0) {
+            exposureTime_sec -= 1;
+          }
+          holdTime = 0;
+          holdDelta = 1;
           break;
         case COUNT_DOWN_HELD(COUNT_BUTTON_TIMER_OFFSET):
+          holdTime++;
+          if (holdTime * TIMER_PERIOD_MS % SYSTEM_BUTTON_HOLD_TIME_MS == 0) {
+            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 2 * SYSTEM_BUTTON_HOLD_TIME_MS) {
+              holdDelta =  2;
+            }
+            exposureTime_sec -= holdDelta;
+            if (exposureTime_sec < 0) exposureTime_sec = 0;
+          }
           break;
         case COUNT_DOWN_RELEASED(COUNT_BUTTON_TIMER_OFFSET):
           break;
         case COUNT_UP_PRESSED(COUNT_BUTTON_TIMER_OFFSET):
+          exposureTime_sec += 1;
+          if (exposureTime_sec > SYSTEM_MAX_EXPOSURE_TIME_S) {
+            exposureTime_sec = SYSTEM_MAX_EXPOSURE_TIME_S;
+          }
+          holdTime = 0;
+          holdDelta = 1;
           break;
         case COUNT_UP_HELD(COUNT_BUTTON_TIMER_OFFSET):
+          holdTime++;
+          if (holdTime * TIMER_PERIOD_MS % SYSTEM_BUTTON_HOLD_TIME_MS == 0) {
+            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 2 * SYSTEM_BUTTON_HOLD_TIME_MS) {
+              holdDelta = 2;
+            }
+            exposureTime_sec += holdDelta;
+            if (exposureTime_sec > SYSTEM_MAX_EXPOSURE_TIME_S) {
+              exposureTime_sec = SYSTEM_MAX_EXPOSURE_TIME_S;
+            }
+          }
           break;
         case COUNT_UP_RELEASED(COUNT_BUTTON_TIMER_OFFSET):
           break;
         case COUNT_DOWN_PRESSED(COUNT_BUTTON_INTENSITY_OFFSET):
+          if (exposureIntensity_percent > 0) {
+            exposureIntensity_percent -= 1;
+          }
+          holdTime = 0;
+          holdDelta = 1;
           break;
         case COUNT_DOWN_HELD(COUNT_BUTTON_INTENSITY_OFFSET):
+          holdTime++;
+          if (holdTime * TIMER_PERIOD_MS % SYSTEM_BUTTON_HOLD_TIME_MS == 0) {
+            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 2 * SYSTEM_BUTTON_HOLD_TIME_MS ) {
+              holdDelta = 2;
+            }
+            exposureIntensity_percent -= holdDelta;
+            if (exposureIntensity_percent < 0) {
+              exposureIntensity_percent = 0;
+            }
+          }
           break;
         case COUNT_DOWN_RELEASED(COUNT_BUTTON_INTENSITY_OFFSET):
           break;
         case COUNT_UP_PRESSED(COUNT_BUTTON_INTENSITY_OFFSET):
+          if (exposureIntensity_percent < 100) {
+            exposureIntensity_percent += 1;
+          }
+          holdTime = 0;
+          holdDelta = 1;
           break;
         case COUNT_UP_HELD(COUNT_BUTTON_INTENSITY_OFFSET):
+          holdTime++;
+          if (holdTime * TIMER_PERIOD_MS % SYSTEM_BUTTON_HOLD_TIME_MS == 0) {
+            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 2 * SYSTEM_BUTTON_HOLD_TIME_MS) {
+              holdDelta =  2;
+            }
+            exposureIntensity_percent += holdDelta;
+            if (exposureIntensity_percent > 100) {
+              exposureIntensity_percent = 100;
+            }
+          }
           break;
         case COUNT_UP_RELEASED(COUNT_BUTTON_INTENSITY_OFFSET):
           break;
@@ -216,7 +276,7 @@ char systemIdle() {
   SYSTEM_UV_PWM(0);
   
   // turn off UV timer
-  systemUvTimer_ticks = 0;
+  exposureTimer_ticks = 0;
   
   systemState = SYSTEM_IDLE_STATE;
 
@@ -230,7 +290,7 @@ char systemRun() {
   // record timer and intensity into EEPROM
 
   // start UV timer
-  systemUvTimer_ticks = (unsigned int) (exposureTime_sec * TIMER_FREQ_HZ );
+  exposureTimer_ticks = (unsigned int) (exposureTime_sec * TIMER_FREQ_HZ );
   
   // turn on UV
   SYSTEM_UV_PWM(1);
