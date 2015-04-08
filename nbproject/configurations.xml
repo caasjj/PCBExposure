@@ -8,6 +8,7 @@
       <itemPath>lcdControl.h</itemPath>
       <itemPath>xlcd.h</itemPath>
       <itemPath>main.h</itemPath>
+      <itemPath>panel.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -20,6 +21,7 @@
       <itemPath>lcdControl.c</itemPath>
       <itemPath>xlcd.c</itemPath>
       <itemPath>main.c</itemPath>
+      <itemPath>panel.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -133,6 +135,7 @@
         <property key="ToolFirmwareFilePath"
                   value="Press to browse for a specific firmware version"/>
         <property key="ToolFirmwareOption.UseLatestFirmware" value="true"/>
+        <property key="firmware.download.all" value="false"/>
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="true"/>

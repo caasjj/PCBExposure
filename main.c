@@ -49,32 +49,26 @@
 #include <plib/adc.h>
 #include <plib/EEP.h>
 
-/** C O N F I G U R A T I O N   B I T S ******************************/
-
-#pragma config OSC    = INTIO7, FCMEN   = OFF,     IESO   = OFF                  // CONFIG1H
-#pragma config PWRT   = OFF,    BOREN   = SBORDIS, BORV   = 3                    // CONFIG2L
-#pragma config WDT    = OFF,    WDTPS   = 32768                                  // CONFIG2H
-#pragma config MCLRE  = ON,     LPT1OSC = OFF,     PBADEN = OFF, CCP2MX = PORTBE // CONFIG3H
-#pragma config STVREN = ON,     LVP     = OFF,     XINST  = OFF                  // CONFIG4L
-#pragma config CP0    = OFF,    CP1     = OFF,     CP2    = OFF, CP3    = OFF    // CONFIG5L
-#pragma config CPB    = OFF,    CPD     = OFF                                    // CONFIG5H
-#pragma config WRT0   = OFF,    WRT1    = OFF,     WRT2   = OFF, WRT3   = OFF    // CONFIG6L
-#pragma config WRTB   = OFF,    WRTC    = OFF,     WRTD   = OFF                  // CONFIG6H
-#pragma config EBTR0  = OFF,    EBTR1   = OFF,     EBTR2  = OFF, EBTR3   = OFF   // CONFIG7L
-#pragma config EBTRB  = OFF                                                      // CONFIG7H
-
-
 /** D E C L A R A T I O N S *******************************************/
-unsigned int  exposureTime_sec    = 240;
-unsigned int  exposureCurrent_mA  = 20;
-unsigned long systemTime = 0L;
+unsigned int    exposureTime_sec            = 10;
+unsigned char   exposureIntensity_percent   = 20;
+unsigned long   systemTime_tick             = 0L;
 
-unsigned int dummy;
 
-void init(void);
+unsigned char   systemState                 = SYSTEM_INIT_STATE;
+unsigned int    systemUvTimer_ticks         = 0;
+char            systemTick                  = 0;
+
+void            systemInit(void);
+char            systemRun(void);
+char            systemIdle(void);
+char            systemToggle(void);
+char            systemProcessCommand(char);
+char            command;
 
 void main (void)
 {
+
 
 //  dummy1 = Read_b_eep(0x00);
 //  dummy2 = Read_b_eep(0x01);
@@ -84,65 +78,49 @@ void main (void)
 
   OSCCON    = 0x73;             // internal clock at 8MHz
 
-  init();
+  systemInit();
 
   IPEN      = 1;                // enable interrupt prioritization
   PEIE      = 1;                // enable peripheral interrupts
   ei();
 
-  PANEL_PWM_ON_OFF_STATUS_LED(1);
+ // PANEL_PWM_ON_OFF_STATUS_LED(1);
 
-  while (1){};
-
+  while (1){
+      if (systemState == SYSTEM_RUNNING_STATE) {
+        if (systemUvTimer_ticks == 0 || command == START_STOP_PRESSED) {
+         command = systemIdle();
+        } 
+      }
+      else if (command == START_STOP_PRESSED) {
+        command = systemRun();
+      }
+      else if (command != NULL_COMMAND) {
+        command = systemProcessCommand(command);
+      }
+  };
 }
 
 void interrupt InterruptServiceHigh(void) {
 
+
   if (TMR1IF) {
-    systemTime++;
-    
-    // If Timer Interrupt
-    //   If !CounterButtonActive
-    //       If RisingEdge
-    //          pressedCount = 0
-    //          numUpdates = 1
-    //          Target = Read Intensity/Timer function select
-    //          Increment Target by TargetUpdateDelta
-    //          CountButtonActive=true
-    //       else If FallingEdge
-    //          pressedCount = 0
-    //          numUpdates = 1
-    //          Target = Read Intensity/Timer function select
-    //          Decrement Target by TargetUpdateDelta
-    //          CountButtonActive=true
-    //   else If button still pressed
-    //           If pressedCount++ % TargetUpdateRate == 0
-    //              UpdateTarget by TargetUpdateDelta
-    //              numUpdates++
-    //              if numUpdates > consecutiveUpdateThrshold, TargetUpdateDelta *= 2
-    //        else
-    //           numUpdates = 0
-    //           TargetUpdateDelta back to original value
+    systemTime_tick++;
 
-    PANEL_SYSTEM_ON_OFF_STATUS_LED_TOGGLE();
-    TIMER_RESTART();
-
-    if ( systemTime % 600 == 0) {
-      PANEL_PWM_ON_OFF_STATUS_LED(0);
-    }
-
-    if (systemTime % 5 == 0) {
-      SYSTEM_UV_LED_PWM_LATCH = ~SYSTEM_UV_LED_PWM_LATCH;
+    if (systemTime_tick % 5 == 0) {
+      panelToggleSystemOnOffStatusLed();
     }
     
+    command = panelGetCommand();
+    
+    if (systemUvTimer_ticks) {
+      systemUvTimer_ticks--;
+    }
+
     TIMER_INT_CLR();
+    TIMER_RESTART(TIMER_PERIOD_MS);
 
-    ConvertADC();
-
-  } else if (ADIF) {
-    dummy = ReadADC();
-    ADC_INT_CLR();
-  }
+  } 
 
 }
 
@@ -154,35 +132,106 @@ void interrupt low_priority InterruptServiceLow(void)
     INT2IF = 0;
 }
 
-void init() {
+void systemInit() {
 
-    // Initialize PORTA IO pins
+    // Initialize PORTA IO pins (UV PWM, Buzzer, Heartbeat LED and Test LED)
     PORT_IO_INIT();
     
     // Initialize LCD
     LCDInit();
     LCDWelcomeMessage();
 
-    // Initialize ADC
-    ADC_INIT();
+    // Initialize panel buttons
+    panelInit();
     
-    // assign ADC pin RA1/AN1 to CountUp/CountDown of ExposureTime/Intensity as selected above
-
-    // Assign digital pin RA4 to Start/Stop (30mS time debounce time constant)
-
-    // assign pin RA5 to LED PWM
-
-    // assign pin RC0 to Power ON status LED ( green )
-
-    // assign pin RC1 to UV Led ON status LED ( red )
-
-    // assign pin RC2 to buzzer
-
-    // assign pin
-    // set up timer to run at 100Hz with high priority interrupt
-    TIMER_INIT();
+    // set up timer to run at 100ms period with high priority interrupt
+    TIMER_INIT(TIMER_PERIOD_MS, HIGH_PRIORITY_INT);
     
     // read ExposureTime and IntensityValue from EEPROM
 
     // Update Display with Timer and Intensity Values
+
+    systemIdle();
+}
+
+char systemProcessCommand(char cmd) {
+
+    if (systemState == SYSTEM_IDLE_STATE) {
+      switch(cmd) {
+        case NULL_COMMAND:
+          break;
+        case COUNT_DOWN_PRESSED(COUNT_BUTTON_TIMER_OFFSET):
+          break;
+        case COUNT_DOWN_HELD(COUNT_BUTTON_TIMER_OFFSET):
+          break;
+        case COUNT_DOWN_RELEASED(COUNT_BUTTON_TIMER_OFFSET):
+          break;
+        case COUNT_UP_PRESSED(COUNT_BUTTON_TIMER_OFFSET):
+          break;
+        case COUNT_UP_HELD(COUNT_BUTTON_TIMER_OFFSET):
+          break;
+        case COUNT_UP_RELEASED(COUNT_BUTTON_TIMER_OFFSET):
+          break;
+        case COUNT_DOWN_PRESSED(COUNT_BUTTON_INTENSITY_OFFSET):
+          break;
+        case COUNT_DOWN_HELD(COUNT_BUTTON_INTENSITY_OFFSET):
+          break;
+        case COUNT_DOWN_RELEASED(COUNT_BUTTON_INTENSITY_OFFSET):
+          break;
+        case COUNT_UP_PRESSED(COUNT_BUTTON_INTENSITY_OFFSET):
+          break;
+        case COUNT_UP_HELD(COUNT_BUTTON_INTENSITY_OFFSET):
+          break;
+        case COUNT_UP_RELEASED(COUNT_BUTTON_INTENSITY_OFFSET):
+          break;
+
+        default: break;
+      }
+    }
+  return NULL_COMMAND;
+}
+
+char systemIdle() {
+
+  // turn off UV
+  SYSTEM_UV_PWM(0);
+  
+  // turn off UV timer
+  systemUvTimer_ticks = 0;
+  
+  systemState = SYSTEM_IDLE_STATE;
+
+  panelSetUiState( PANEL_UI_IDLE );
+
+  return NULL_COMMAND;
+}
+
+char systemRun() {
+
+  // record timer and intensity into EEPROM
+
+  // start UV timer
+  systemUvTimer_ticks = (unsigned int) (exposureTime_sec * TIMER_FREQ_HZ );
+  
+  // turn on UV
+  SYSTEM_UV_PWM(1);
+
+  // set system state
+  systemState = SYSTEM_RUNNING_STATE;
+
+  // change UI to a single counter (buttons are disabled), turn on UvOnOff status LED
+  panelSetUiState( PANEL_UI_RUNNING );
+
+  return NULL_COMMAND;
+}
+
+char systemToggle() {
+
+  if (systemState == SYSTEM_RUNNING_STATE) {
+    systemIdle();
+  } else {
+    systemRun();
+  }
+
+  return NULL_COMMAND;
 }
