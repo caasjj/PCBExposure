@@ -1,5 +1,6 @@
 
 #include "panel.h"
+#include "lcdControl.h"
 
 #define PRESSED       0
 #define HELD          1
@@ -98,8 +99,10 @@ void panelInit() {
 void panelSetUiState(unsigned char state) {
   if (state == PANEL_UI_RUNNING) {
     panelSetUvOnOffStatusLed(1);
+    LCDUpdateUVStatus(1);
   } else {
     panelSetUvOnOffStatusLed(0);
+    LCDUpdateUVStatus(0);
   }
 }
 

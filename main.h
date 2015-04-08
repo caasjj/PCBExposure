@@ -30,18 +30,17 @@ extern "C" {
 #pragma config EBTRB  = OFF                                                      // CONFIG7H
 
 
-
 /**  S Y S T E M   C O N S T A N T S   *************************************/
-#define FOSC                        8000000
-#define SYS_CLK_FREQ_HZ             FOSC / 4
-#define SYS_CLK_FREQ_kHZ            SYS_CLK_FREQ_HZ / 1000
-#define HIGH_PRIORITY_INT           1
-#define LOW_PRIORITY_INT            0
-#define SYSTEM_INIT_STATE           0
-#define SYSTEM_IDLE_STATE           1
-#define SYSTEM_RUNNING_STATE        2
-#define SYSTEM_BUTTON_HOLD_TIME_MS  200 // must be integer multiple of system timer tick
-#define SYSTEM_MAX_EXPOSURE_TIME_S  300U
+#define FOSC                                    8000000
+#define SYS_CLK_FREQ_HZ                         FOSC / 4
+#define SYS_CLK_FREQ_kHZ                        SYS_CLK_FREQ_HZ / 1000
+#define HIGH_PRIORITY_INT                       1
+#define LOW_PRIORITY_INT                        0
+#define SYSTEM_INIT_STATE                       0
+#define SYSTEM_IDLE_STATE                       1
+#define SYSTEM_RUNNING_STATE                    2
+#define SYSTEM_BUTTON_HOLD_TIME_MS              200 // must be integer multiple of system timer tick
+#define SYSTEM_MAX_EXPOSURE_TIME_S              300
 
 /**  G E R I C   U S E   M A C R O S   ************************************/
 #define MAKE_PORT_OUTPUT(port, pin)             port &= ~(1 << pin)
@@ -66,33 +65,38 @@ extern "C" {
 #define SYSTEM_TEST_LED_PIN                     2
 #define SYSTEM_TEST_LED_LATCH                   LATC2
 
-#define PORT_IO_INIT()  MAKE_PORT_OUTPUT(SYSTEM_UV_PWM_TRIS, SYSTEM_UV_PWM_PIN ); \
-                        MAKE_PORT_OUTPUT(SYSTEM_BUZZER_TRIS, SYSTEM_BUZZER_PIN ); \
-                        MAKE_PORT_OUTPUT(SYSTEM_HEARTBEAT_LED_TRIS, SYSTEM_HEARTBEAT_LED_PIN); \
-                        MAKE_PORT_OUTPUT(SYSTEM_TEST_LED_TRIS, SYSTEM_TEST_LED_PIN);
+#define PORT_IO_INIT()                          MAKE_PORT_OUTPUT(SYSTEM_UV_PWM_TRIS, SYSTEM_UV_PWM_PIN ); \
+                                                MAKE_PORT_OUTPUT(SYSTEM_BUZZER_TRIS, SYSTEM_BUZZER_PIN ); \
+                                                MAKE_PORT_OUTPUT(SYSTEM_HEARTBEAT_LED_TRIS, SYSTEM_HEARTBEAT_LED_PIN); \
+                                                MAKE_PORT_OUTPUT(SYSTEM_TEST_LED_TRIS, SYSTEM_TEST_LED_PIN);
 
 /** C O N F I G U R E    T I M E R 1  ************************************/
-#define TIMER_PRESCALER         8
-#define TIMER_CLK_FREQ_kHZ      SYS_CLK_FREQ_kHZ / TIMER_PRESCALER
-#define TIMER_PERIOD_MS         50
-#define TIMER_FREQ_HZ           (unsigned int )(1000 / TIMER_PERIOD_MS)
-#define TIMER_START_VALUE(x)    (unsigned int) (65536 - x * TIMER_CLK_FREQ_kHZ)
-#define TIMER_CONFIG            T1_16BIT_RW     | \
-                                T1_PS_1_8       | \
-                                T1_OSC1EN_OFF   | \
-                                T1_SYNC_EXT_ON  | \
-                                T1_SOURCE_INT   | \
-                                TIMER_INT_ON
+#define TIMER_PRESCALER                         8
+#define TIMER_CLK_FREQ_kHZ                      SYS_CLK_FREQ_kHZ / TIMER_PRESCALER
+#define TIMER_PERIOD_MS                         50
+#define TIMER_FREQ_HZ                           (unsigned int )(1000 / TIMER_PERIOD_MS)
+#define TIMER_START_VALUE(x)                    (unsigned int) (65536 - x * TIMER_CLK_FREQ_kHZ)
+#define TIMER_CONFIG                            T1_16BIT_RW     | \
+                                                T1_PS_1_8       | \
+                                                T1_OSC1EN_OFF   | \
+                                                T1_SYNC_EXT_ON  | \
+                                                T1_SOURCE_INT   | \
+                                                TIMER_INT_ON
 
-#define TIMER_INIT(x,p)         OpenTimer1(TIMER_CONFIG);   \
-                                TMR1IP    = p;              \
-                                WriteTimer1(TIMER_START_VALUE(x));
+#define TIMER_INIT(x,p)                         OpenTimer1(TIMER_CONFIG);   \
+                                                TMR1IP    = p;              \
+                                                WriteTimer1(TIMER_START_VALUE(x));
 
-#define TIMER_RESTART(x)         WriteTimer1(TIMER_START_VALUE(x))
+#define TIMER_RESTART(x)                        WriteTimer1(TIMER_START_VALUE(x))
 
-#define TIMER_INT_CLR()         TMR1IF=0
+#define TIMER_INT_CLR()                         TMR1IF=0
 
-    
+/*** F U N C T I O N S   **********************************************/
+void            systemInit(void);
+char            systemRun(void);
+char            systemIdle(void);
+char            systemProcessCommand(char);
+
 #ifdef	__cplusplus
 }
 #endif

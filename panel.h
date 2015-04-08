@@ -72,7 +72,8 @@ extern "C" {
 #define START_STOP_RELEASED                     22
 
 /** F U N C T I O N   D E C L A R A T I O N S  *********************************/
-unsigned char panelGetCommand();
+void panelInit(void);
+unsigned char panelGetCommand(void);
 void panelSetUiState( unsigned char );
 void panelSetSystemOnOffStatusLed( char );
 void panelToggleSystemOnOffStatusLed();

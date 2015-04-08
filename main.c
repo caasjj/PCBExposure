@@ -41,6 +41,7 @@
 #undef _PLIB
 
 #include "main.h"
+#include "LCDControl.h"
 
 /** I N C L U D E S **************************************************/
 #include <xc.h>
@@ -53,24 +54,18 @@
 
 unsigned char   systemState                 = SYSTEM_INIT_STATE;
 char            systemTick                  = 0;
-void            systemInit(void);
-char            systemRun(void);
-char            systemIdle(void);
-char            systemToggle(void);
-char            systemProcessCommand(char);
-
-int             exposureTime_sec            = 10UL;
-char            exposureIntensity_percent   = 20UL;
-unsigned long   systemTime_tick             =  0UL;
-unsigned int    exposureTimer_ticks         = 0;
-char            command;
-int             fault = 0;
-int             holdTime = 0;
-int             holdDelta = 1;
+int             exposureTime_sec            = 60;
+signed char     exposureIntensity_percent   = 20;
+unsigned long   systemTime_tick             = 0ul;
+unsigned int    exposureTimer_ticks         = 0u;
+int             fault                       = 0;
+int             holdTime                    = 0;
+char            holdDelta                   = 1;
 
 void main (void)
 {
 
+  char            command;
 
 //  dummy1 = Read_b_eep(0x00);
 //  dummy2 = Read_b_eep(0x01);
@@ -81,8 +76,8 @@ void main (void)
   OSCCON    = 0x73;             // internal clock at 8MHz
 
   systemInit();
-  LATA3 = 1;
-  IPEN      = 1;                // enable interrupt prioritization
+
+//  IPEN      = 1;                // enable interrupt prioritization
   PEIE      = 1;                // enable peripheral interrupts
   ei();
 
@@ -103,7 +98,6 @@ void main (void)
         systemRun();
       }
       else if (command == START_STOP_HELD) {
-        command = NULL_COMMAND;
       }
       else if (command != NULL_COMMAND ) {
         systemProcessCommand(command);
@@ -117,6 +111,11 @@ void main (void)
       }
 
       systemTick = false;
+
+      if (command != NULL_COMMAND) {
+        LCDUpdateLevel(exposureIntensity_percent);
+        LCDUpdateTimer(exposureTime_sec);
+      }
     }
 
   };
@@ -130,6 +129,7 @@ void interrupt InterruptServiceHigh(void) {
 
     if (systemTime_tick % (TIMER_FREQ_HZ>>1) == 0) {
       panelToggleSystemOnOffStatusLed();
+      LCDToggleHeartbeat();
     }
 
     if (systemTick) {
@@ -145,12 +145,12 @@ void interrupt InterruptServiceHigh(void) {
 }
 
 //// -------------------- Iterrupt Service Routines --------------------------
-void interrupt low_priority InterruptServiceLow(void)
-{
-    LATA2 = ~LATA2; // toggle LATD
-    INT1IF = 0;
-    INT2IF = 0;
-}
+//void interrupt low_priority InterruptServiceLow(void)
+//{
+//    LATA2 = ~LATA2; // toggle LATD
+//    INT1IF = 0;
+//    INT2IF = 0;
+//}
 
 void systemInit() {
 
@@ -159,7 +159,9 @@ void systemInit() {
     
     // Initialize LCD
     LCDInit();
-    LCDWelcomeMessage();
+    LCDUpdateLevel(exposureIntensity_percent);
+    LCDUpdateUVStatus(0);
+    LCDUpdateTimer(exposureTime_sec);
 
     // Initialize panel buttons
     panelInit();
@@ -190,10 +192,10 @@ char systemProcessCommand(char cmd) {
         case COUNT_DOWN_HELD(COUNT_BUTTON_TIMER_OFFSET):
           holdTime++;
           if (holdTime * TIMER_PERIOD_MS % SYSTEM_BUTTON_HOLD_TIME_MS == 0) {
-            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 2 * SYSTEM_BUTTON_HOLD_TIME_MS) {
+            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 5 * SYSTEM_BUTTON_HOLD_TIME_MS) {
               holdDelta =  2;
             }
-            exposureTime_sec -= holdDelta;
+            exposureTime_sec -= (int) holdDelta;
             if (exposureTime_sec < 0) exposureTime_sec = 0;
           }
           break;
@@ -210,10 +212,10 @@ char systemProcessCommand(char cmd) {
         case COUNT_UP_HELD(COUNT_BUTTON_TIMER_OFFSET):
           holdTime++;
           if (holdTime * TIMER_PERIOD_MS % SYSTEM_BUTTON_HOLD_TIME_MS == 0) {
-            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 2 * SYSTEM_BUTTON_HOLD_TIME_MS) {
+            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 5 * SYSTEM_BUTTON_HOLD_TIME_MS) {
               holdDelta = 2;
             }
-            exposureTime_sec += holdDelta;
+            exposureTime_sec += (int) holdDelta;
             if (exposureTime_sec > SYSTEM_MAX_EXPOSURE_TIME_S) {
               exposureTime_sec = SYSTEM_MAX_EXPOSURE_TIME_S;
             }
@@ -231,10 +233,10 @@ char systemProcessCommand(char cmd) {
         case COUNT_DOWN_HELD(COUNT_BUTTON_INTENSITY_OFFSET):
           holdTime++;
           if (holdTime * TIMER_PERIOD_MS % SYSTEM_BUTTON_HOLD_TIME_MS == 0) {
-            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 2 * SYSTEM_BUTTON_HOLD_TIME_MS ) {
+            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 5 * SYSTEM_BUTTON_HOLD_TIME_MS ) {
               holdDelta = 2;
             }
-            exposureIntensity_percent -= holdDelta;
+            exposureIntensity_percent -= (signed char) holdDelta;
             if (exposureIntensity_percent < 0) {
               exposureIntensity_percent = 0;
             }
@@ -252,10 +254,10 @@ char systemProcessCommand(char cmd) {
         case COUNT_UP_HELD(COUNT_BUTTON_INTENSITY_OFFSET):
           holdTime++;
           if (holdTime * TIMER_PERIOD_MS % SYSTEM_BUTTON_HOLD_TIME_MS == 0) {
-            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 2 * SYSTEM_BUTTON_HOLD_TIME_MS) {
+            if (holdDelta < 2 && holdTime * TIMER_PERIOD_MS > 5 * SYSTEM_BUTTON_HOLD_TIME_MS) {
               holdDelta =  2;
             }
-            exposureIntensity_percent += holdDelta;
+            exposureIntensity_percent += (char) holdDelta;
             if (exposureIntensity_percent > 100) {
               exposureIntensity_percent = 100;
             }
@@ -267,6 +269,7 @@ char systemProcessCommand(char cmd) {
         default: break;
       }
     }
+
   return NULL_COMMAND;
 }
 
@@ -281,7 +284,7 @@ char systemIdle() {
   systemState = SYSTEM_IDLE_STATE;
 
   panelSetUiState( PANEL_UI_IDLE );
-
+  
   return NULL_COMMAND;
 }
 
@@ -300,17 +303,6 @@ char systemRun() {
 
   // change UI to a single counter (buttons are disabled), turn on UvOnOff status LED
   panelSetUiState( PANEL_UI_RUNNING );
-
-  return NULL_COMMAND;
-}
-
-char systemToggle() {
-
-  if (systemState == SYSTEM_RUNNING_STATE) {
-    systemIdle();
-  } else {
-    systemRun();
-  }
 
   return NULL_COMMAND;
 }

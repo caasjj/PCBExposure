@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "LCDControl.h"
 
+char heartBeat = 1;
+
 void LCDInit(void) {
   char buffer1[] = "Initializing..";
   char buffer2[] = "Please Wait...";
@@ -10,75 +12,63 @@ void LCDInit(void) {
   while (BusyXLCD());
 
   // This is the important line that was keeping
-  // the interface from workign properly.
+  // the interface from workign properly. It resets the hd44780 chip.
   // For 8 bit interface, you also need to make sure T1OSCEN=0
-  // if using PORTC as an output port for controlling the LCD>
+  // if using PORTC as an output port for controlling the LCD.
   WriteCmdXLCD(0x01);
 
-  while (BusyXLCD());
-  LCDWrite(LCD_LINE1_VAL, buffer1);
-  LCDWrite(LCD_LINE2_VAL, buffer2);
-  while (BusyXLCD());
+  LCDTitleRow();
+  LCDToggleHeartbeat();
+
+}
+
+void LCDTitleRow() {
+  char titleRow[] = "Level UV Time";
+  LCDWriteLine(LCD_TITLE_ROW, titleRow);
   SetDDRamAddr(LCD_OFFSCREEN_LOC);
-
 }
 
-void LCDWelcomeMessage(void) {
-  char buffer1[] = "Welcome dude";
-  char buffer2[] = "Hello World!";
-
-  while (BusyXLCD());
-  LCDWrite(LCD_LINE1_VAL, buffer1);
-  LCDWrite(LCD_LINE2_VAL, buffer2);
-  while (BusyXLCD());
-  SetDDRamAddr(LCD_OFFSCREEN_LOC);
-
+void LCDToggleHeartbeat() {
+  char heartOn[] = LCD_HEARBEAT_ON_CHAR;
+  char heartOff[] = LCD_HEARTBEAT_OFF_CHAR;
+  if (heartBeat == 1) {
+    LCDWrite(LCD_TITLE_ROW, LCD_HEARTBEAT_LOC, heartOn );
+  } else {
+     LCDWrite(LCD_TITLE_ROW, LCD_HEARTBEAT_LOC, heartOff );
+  }  
+  heartBeat = ~heartBeat;
 }
 
-void LCDRunningMessage(void) {
-  char buffer1[] = "Temp =          ";
-  char buffer2[] = "SetPt=          ";
-
-  while (BusyXLCD());
-  SetDDRamAddr(LCD_TEMP_LOC - 6);
-  putsXLCD(buffer1);
-  while (BusyXLCD());
-  SetDDRamAddr(LCD_SETPT_LOC - 6);
-  putsXLCD(buffer2);
-
+void LCDUpdateLevel(char intensity){
+  char s[4];
+  sprintf(s, "%3d%%", intensity);
+  LCDWrite(LCD_DATA_ROW, LCD_LEVEL_LOC, s);
 }
 
-void LCDWrite(unsigned char LineNum, char * buffer) {
+void LCDUpdateUVStatus(char onOff){
+  if (onOff) {
+    LCDWrite(LCD_DATA_ROW, LCD_UV_IND_LOC, "On");
+  } else {
+    LCDWrite(LCD_DATA_ROW, LCD_UV_IND_LOC, "--");
+  }
+}
+
+void LCDUpdateTimer(unsigned int exposureTime) {
+  char s[6];
+  sprintf(s, "%3d sec", exposureTime);
+  LCDWrite(LCD_DATA_ROW, LCD_TIME_LOC, s);
+}
+
+
+void LCDWrite(unsigned char LineNum, unsigned char offset, char * buffer) {
+  while (BusyXLCD());
+  SetDDRamAddr(64 * LineNum + offset);
+  putsXLCD(buffer);
+}
+
+void LCDWriteLine(unsigned char LineNum, char * buffer) {
   while (BusyXLCD());
   SetDDRamAddr(64 * LineNum);
   putsXLCD(buffer);
 }
-
-
-void LCDSetContrastLevel(unsigned char LedLevel) {
-
-  // Turn on the LED
-  // Disable CCP2 (RB3) output driver - write 1 to bit Bit3 of TRISB
-  TRISBbits.TRISB3 = 1;
-
-  // Load the timer 2 period = (PR2+1) * 0.5uS * TMR2 Prescale (=4) =512uS
-  PR2 = 255;
-
-  // Set the PWM duty cycle
-  CCP2M2 = 1;
-  CCP2M3 = 1;
-  CCPR2L = LedLevel;
-
-  // Start Timer2
-  TMR2IF = 0;
-  T2CKPS0 = 1;
-  T2CKPS1 = 0;
-  TMR2ON = 1;
-
-  // Wait for Timer overflow
-  //while ( PIR1bits.TMR2IF == 0 );
-  TRISB3 = 0;
-
-}
-
 
