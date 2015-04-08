@@ -53,8 +53,8 @@ extern "C" {
 #define ADC_PORT_CONFIG                         ADC_3ANA  // AN0, AN1 and AN2 are analog - 3 analog channels
 
 #define ADC_INT_CLR()                           ADIF = 0
-#define ADC_SWITCH_HIGH_THRESHOLD               0x300
-#define ADC_SWITCH_LOW_THRESHOLD                0x100
+#define ADC_SWITCH_HIGH_THRESHOLD               0x240
+#define ADC_SWITCH_LOW_THRESHOLD                0x140
 
 /** C O M M A N D   C O D E S   ************************************************/
 #define NULL_COMMAND                            (char)-1

@@ -65,6 +65,7 @@ char            systemIdle(void);
 char            systemToggle(void);
 char            systemProcessCommand(char);
 char            command;
+int             fault = 0;
 
 void main (void)
 {
@@ -79,7 +80,7 @@ void main (void)
   OSCCON    = 0x73;             // internal clock at 8MHz
 
   systemInit();
-
+  LATA3 = 1;
   IPEN      = 1;                // enable interrupt prioritization
   PEIE      = 1;                // enable peripheral interrupts
   ei();
@@ -87,17 +88,36 @@ void main (void)
  // PANEL_PWM_ON_OFF_STATUS_LED(1);
 
   while (1){
+    
+    if (systemTick) {
+
+      command = panelGetCommand();
+
       if (systemState == SYSTEM_RUNNING_STATE) {
-        if (systemUvTimer_ticks == 0 || command == START_STOP_PRESSED) {
-         command = systemIdle();
-        } 
+          if( command == START_STOP_RELEASED) {
+           systemIdle();
+          }
+        }
+      else if (command == START_STOP_RELEASED) {
+        systemRun();
       }
-      else if (command == START_STOP_PRESSED) {
-        command = systemRun();
+      else if (command == START_STOP_HELD) {
+        command = NULL_COMMAND;
       }
-      else if (command != NULL_COMMAND) {
-        command = systemProcessCommand(command);
+      else if (command != NULL_COMMAND ) {
+        systemProcessCommand(command);
       }
+
+      if (systemUvTimer_ticks) {
+        systemUvTimer_ticks--;
+        if (!systemUvTimer_ticks) {
+          systemIdle();
+        }
+      }
+
+      systemTick = false;
+    }
+
   };
 }
 
@@ -107,15 +127,14 @@ void interrupt InterruptServiceHigh(void) {
   if (TMR1IF) {
     systemTime_tick++;
 
-    if (systemTime_tick % 5 == 0) {
+    if (systemTime_tick % (TIMER_FREQ_HZ>>1) == 0) {
       panelToggleSystemOnOffStatusLed();
     }
-    
-    command = panelGetCommand();
-    
-    if (systemUvTimer_ticks) {
-      systemUvTimer_ticks--;
+
+    if (systemTick) {
+      fault += 1;
     }
+    systemTick = 1;
 
     TIMER_INT_CLR();
     TIMER_RESTART(TIMER_PERIOD_MS);

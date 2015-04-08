@@ -72,7 +72,7 @@ extern "C" {
 /** C O N F I G U R E    T I M E R 1  ************************************/
 #define TIMER_PRESCALER         8
 #define TIMER_CLK_FREQ_kHZ      SYS_CLK_FREQ_kHZ / TIMER_PRESCALER
-#define TIMER_PERIOD_MS         100
+#define TIMER_PERIOD_MS         50
 #define TIMER_FREQ_HZ           (unsigned int )(1000 / TIMER_PERIOD_MS)
 #define TIMER_START_VALUE(x)    (unsigned int) (65536 - x * TIMER_CLK_FREQ_kHZ)
 #define TIMER_CONFIG            T1_16BIT_RW     | \

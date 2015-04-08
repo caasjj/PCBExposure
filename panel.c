@@ -121,10 +121,11 @@ void panelToggleUvOnOffStatusLed(){
 
 int _panelReadInput(unsigned char channel){
   int value;
+
   SelChanConvADC(channel);
   while(BusyADC());
   value =  ReadADC();
-  
+
   return value;
 
 }
