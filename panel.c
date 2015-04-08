@@ -6,11 +6,12 @@
 #define HELD          1
 #define RELEASED      2
 
-int _selSwitchState       = RELEASED;
-int _upButtonState        = RELEASED;
-int _downButtonState      = RELEASED;
-int _startStopButtonState = RELEASED;
-
+int         _selSwitchState       = RELEASED;
+int         _upButtonState        = RELEASED;
+int         _downButtonState      = RELEASED;
+int         _startStopButtonState = RELEASED;
+signed char _intensity;
+int         _time;
 
 unsigned char panelGetCommand(){
 
@@ -81,7 +82,7 @@ unsigned char panelGetCommand(){
 }
 
 
-void panelInit() {
+void panelInit(signed char intensity, int time) {
   
   MAKE_PORT_INPUT(PANEL_SEL_SWITCH_PORT, PANEL_SEL_SWITCH_PIN);
   MAKE_PORT_INPUT(PANEL_UP_DOWN_BUTTON_PORT, PANEL_UP_DOWN_BUTTON_PIN);
@@ -94,15 +95,27 @@ void panelInit() {
   unsigned char port_config = ADC_PORT_CONFIG;
 
   OpenADC(config, config2, port_config);
+
+  LCDInit();
+  LCDUpdateLevel(intensity);
+  LCDUpdateUVStatus(0);
+  LCDUpdateTimer(time);
+
+  _intensity = intensity;
+  _time = time;
 }
 
 void panelSetUiState(unsigned char state) {
   if (state == PANEL_UI_RUNNING) {
     panelSetUvOnOffStatusLed(1);
     LCDUpdateUVStatus(1);
+    LCDSetHeartbeatMode(LCD_HEARTBEAT_MODE_ACTIVE);
   } else {
     panelSetUvOnOffStatusLed(0);
     LCDUpdateUVStatus(0);
+    LCDUpdateLevel(_intensity);
+    LCDUpdateTimer(_time);
+    LCDSetHeartbeatMode(LCD_HEARTBEAT_MODE_IDLE);
   }
 }
 
@@ -122,6 +135,25 @@ void panelToggleUvOnOffStatusLed(){
   PANEL_UV_ON_OFF_STATUS_LED_LATCH=~PANEL_UV_ON_OFF_STATUS_LED_LATCH;
 }
 
+void panelUpdateUi(signed char intensity, int time){
+
+  LCDUpdateLevel(intensity);
+  LCDUpdateTimer(time);
+  
+};
+
+void panelUpdateValues(signed char intensity, int time) {
+  _intensity = intensity;
+  _time = time;
+
+  LCDUpdateLevel(_intensity);
+  LCDUpdateTimer( _time);
+}
+
+void panelToggleHeartbeat() {
+  LCDToggleHeartbeat();
+  
+}
 int _panelReadInput(unsigned char channel){
   int value;
 

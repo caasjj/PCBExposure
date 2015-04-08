@@ -72,15 +72,23 @@ extern "C" {
 #define START_STOP_RELEASED                     22
 
 /** F U N C T I O N   D E C L A R A T I O N S  *********************************/
-void panelInit(void);
+void panelInit(signed char, int );
 unsigned char panelGetCommand(void);
+
 void panelSetUiState( unsigned char );
+
 void panelSetSystemOnOffStatusLed( char );
 void panelToggleSystemOnOffStatusLed();
+
 void panelSetUvOnOffStatusLed( char );
 void panelTogglePwmOnOffStatusLed();
-int _panelReadInput(unsigned char);
 
+void panelToggleHeartbeat();
+
+void panelUpdateUi(signed char, int);
+void panelUpdateValues(signed char , int );
+
+int _panelReadInput(unsigned char);
 
 /** U I   C O N F I G U R A T I O N */
 #define PANEL_UI_IDLE                         0

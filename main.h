@@ -90,12 +90,13 @@ extern "C" {
 #define TIMER_RESTART(x)                        WriteTimer1(TIMER_START_VALUE(x))
 
 #define TIMER_INT_CLR()                         TMR1IF=0
+#define TIMER_SEC_TO_TICKS(x)                   (unsigned int) (x * TIMER_FREQ_HZ)
 
 /*** F U N C T I O N S   **********************************************/
 void            systemInit(void);
-char            systemRun(void);
-char            systemIdle(void);
-char            systemProcessCommand(char);
+void            systemRun(void);
+void            systemIdle(void);
+void            systemProcessCommand(char);
 
 #ifdef	__cplusplus
 }

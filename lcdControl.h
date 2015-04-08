@@ -18,9 +18,14 @@
 #define LCD_UV_IND_LOC          0x06
 #define LCD_TIME_LOC		0x09
 
+#define LCD_HEARTBEAT_MODE_IDLE    0
+#define LCD_HEARTBEAT_MODE_ACTIVE  1
+
 #define LCD_HEARTBEAT_LOC       0x0E
-#define LCD_HEARBEAT_ON_CHAR    ":)"
-#define LCD_HEARTBEAT_OFF_CHAR	":D"
+#define LCD_HEARBEAT1_ON_CHAR   ":)"
+#define LCD_HEARTBEAT1_OFF_CHAR	":D"
+#define LCD_HEARBEAT2_ON_CHAR   ":o"
+#define LCD_HEARTBEAT2_OFF_CHAR	":O"
 
 #define LCD_OFFSCREEN_LOC       0x11
 
@@ -28,16 +33,19 @@
 void DelayPORXLCD(void);
 void DelayXLCD(void);
 
-
 void LCDInit( void );
 
-void LCDWrite(unsigned char LineNum, unsigned char Offset, char * buffer);
-void LCDWriteLine(unsigned char LineNum, char * buffer);
-void LCDTitleRow();
-void LCDToggleHeartbeat(void);
-void LCDUpdateLevel(char);
+void LCDSetHeartbeatMode(char);
+void LCDToggleHeartbeat();
+void LCDUpdateLevel(signed char);
 void LCDUpdateUVStatus(char);
 void LCDUpdateTimer(unsigned int);
+void LCDBacklightOn(void);
+void LCDBacklightOff(void);
+
+void _LCDWrite(unsigned char LineNum, unsigned char Offset, char * buffer);
+void _LCDWriteLine(unsigned char LineNum, char * buffer);
+void _LCDTitleRow();
 
 #endif	/* LCDCONTROL_H */
 

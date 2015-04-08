@@ -41,7 +41,7 @@
 #undef _PLIB
 
 #include "main.h"
-#include "LCDControl.h"
+//#include "LCDControl.h"
 
 /** I N C L U D E S **************************************************/
 #include <xc.h>
@@ -90,10 +90,21 @@ void main (void)
       command = panelGetCommand();
 
       if (systemState == SYSTEM_RUNNING_STATE) {
-          if( command == START_STOP_RELEASED) {
+
+          if (exposureTimer_ticks) {
+            exposureTimer_ticks--;
+            if (!exposureTimer_ticks) {
+            systemIdle();
+            } else if (systemTime_tick % (TIMER_FREQ_HZ>>1) == 0){
+                panelUpdateUi(exposureIntensity_percent, exposureTimer_ticks / TIMER_FREQ_HZ );
+            }
+          }  
+          
+          if(systemState == SYSTEM_RUNNING_STATE && command == START_STOP_RELEASED) {
            systemIdle();
           }
-        }
+          
+      }
       else if (command == START_STOP_RELEASED) {
         systemRun();
       }
@@ -101,21 +112,23 @@ void main (void)
       }
       else if (command != NULL_COMMAND ) {
         systemProcessCommand(command);
+        panelUpdateValues(exposureIntensity_percent, exposureTime_sec );
       }
 
-      if (exposureTimer_ticks) {
-        exposureTimer_ticks--;
-        if (!exposureTimer_ticks) {
-          systemIdle();
-        }
-      }
+//      if (exposureTimer_ticks) {
+//        exposureTimer_ticks--;
+//        if (!exposureTimer_ticks) {
+//          systemIdle();
+//        }
+//      }
 
       systemTick = false;
 
-      if (command != NULL_COMMAND) {
-        LCDUpdateLevel(exposureIntensity_percent);
-        LCDUpdateTimer(exposureTime_sec);
-      }
+//      if (command != NULL_COMMAND) {
+//        LCDUpdateLevel(exposureIntensity_percent);
+//        LCDUpdateTimer(exposureTime_sec);
+//      }
+
     }
 
   };
@@ -127,16 +140,15 @@ void interrupt InterruptServiceHigh(void) {
   if (TMR1IF) {
     systemTime_tick++;
 
-    if (systemTime_tick % (TIMER_FREQ_HZ>>1) == 0) {
-      panelToggleSystemOnOffStatusLed();
-      LCDToggleHeartbeat();
-    }
 
     if (systemTick) {
       fault += 1;
     }
     systemTick = 1;
 
+    if (systemTime_tick % (TIMER_FREQ_HZ>>1) == 0){
+      panelToggleHeartbeat();
+    }
     TIMER_INT_CLR();
     TIMER_RESTART(TIMER_PERIOD_MS);
 
@@ -152,31 +164,7 @@ void interrupt InterruptServiceHigh(void) {
 //    INT2IF = 0;
 //}
 
-void systemInit() {
-
-    // Initialize PORTA IO pins (UV PWM, Buzzer, Heartbeat LED and Test LED)
-    PORT_IO_INIT();
-    
-    // Initialize LCD
-    LCDInit();
-    LCDUpdateLevel(exposureIntensity_percent);
-    LCDUpdateUVStatus(0);
-    LCDUpdateTimer(exposureTime_sec);
-
-    // Initialize panel buttons
-    panelInit();
-    
-    // set up timer to run at 100ms period with high priority interrupt
-    TIMER_INIT(TIMER_PERIOD_MS, HIGH_PRIORITY_INT);
-    
-    // read ExposureTime and IntensityValue from EEPROM
-
-    // Update Display with Timer and Intensity Values
-
-    systemIdle();
-}
-
-char systemProcessCommand(char cmd) {
+void systemProcessCommand(char cmd) {
 
     if (systemState == SYSTEM_IDLE_STATE) {
       switch(cmd) {
@@ -270,39 +258,52 @@ char systemProcessCommand(char cmd) {
       }
     }
 
-  return NULL_COMMAND;
 }
 
-char systemIdle() {
+void systemIdle() {
 
   // turn off UV
   SYSTEM_UV_PWM(0);
   
-  // turn off UV timer
-  exposureTimer_ticks = 0;
-  
-  systemState = SYSTEM_IDLE_STATE;
+  // reset UV timer tick counter
+  exposureTimer_ticks = TIMER_SEC_TO_TICKS(exposureTime_sec);
 
-  panelSetUiState( PANEL_UI_IDLE );
+  panelSetUiState(PANEL_UI_IDLE);
+
+  systemState = SYSTEM_IDLE_STATE;
   
-  return NULL_COMMAND;
 }
 
-char systemRun() {
+void systemRun() {
 
   // record timer and intensity into EEPROM
-
-  // start UV timer
-  exposureTimer_ticks = (unsigned int) (exposureTime_sec * TIMER_FREQ_HZ );
+  exposureTimer_ticks = TIMER_SEC_TO_TICKS(exposureTime_sec);
   
   // turn on UV
   SYSTEM_UV_PWM(1);
 
+  panelSetUiState(PANEL_UI_RUNNING);
+
   // set system state
   systemState = SYSTEM_RUNNING_STATE;
 
-  // change UI to a single counter (buttons are disabled), turn on UvOnOff status LED
-  panelSetUiState( PANEL_UI_RUNNING );
+}
 
-  return NULL_COMMAND;
+
+void systemInit() {
+
+    // Initialize PORTA IO pins (UV PWM, Buzzer, Heartbeat LED and Test LED)
+    PORT_IO_INIT();
+
+    // Initialize panel LCD and buttons
+    panelInit(exposureIntensity_percent, exposureTime_sec);
+
+    // set up timer to run at 100ms period with high priority interrupt
+    TIMER_INIT(TIMER_PERIOD_MS, HIGH_PRIORITY_INT);
+
+    // read ExposureTime and IntensityValue from EEPROM
+
+    // Update Display with Timer and Intensity Values
+
+    systemIdle();
 }
