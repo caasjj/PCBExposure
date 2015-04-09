@@ -54,8 +54,8 @@
 
 unsigned char   systemState                 = SYSTEM_INIT_STATE;
 char            systemTick                  = 0;
-int             exposureTime_sec            = 60;
-signed char     exposureIntensity_percent   = 20;
+int             exposureTime_sec            = 42;
+signed char     exposureIntensity_percent   = 97;
 unsigned long   systemTime_tick             = 0ul;
 unsigned int    exposureTimer_ticks         = 0u;
 int             fault                       = 0;
@@ -115,19 +115,7 @@ void main (void)
         panelUpdateValues(exposureIntensity_percent, exposureTime_sec );
       }
 
-//      if (exposureTimer_ticks) {
-//        exposureTimer_ticks--;
-//        if (!exposureTimer_ticks) {
-//          systemIdle();
-//        }
-//      }
-
       systemTick = false;
-
-//      if (command != NULL_COMMAND) {
-//        LCDUpdateLevel(exposureIntensity_percent);
-//        LCDUpdateTimer(exposureTime_sec);
-//      }
 
     }
 
@@ -135,7 +123,6 @@ void main (void)
 }
 
 void interrupt InterruptServiceHigh(void) {
-
 
   if (TMR1IF) {
     systemTime_tick++;
@@ -155,14 +142,6 @@ void interrupt InterruptServiceHigh(void) {
   } 
 
 }
-
-//// -------------------- Iterrupt Service Routines --------------------------
-//void interrupt low_priority InterruptServiceLow(void)
-//{
-//    LATA2 = ~LATA2; // toggle LATD
-//    INT1IF = 0;
-//    INT2IF = 0;
-//}
 
 void systemProcessCommand(char cmd) {
 
@@ -287,6 +266,8 @@ void systemRun() {
   // set system state
   systemState = SYSTEM_RUNNING_STATE;
 
+  saveToEE();
+  
 }
 
 
@@ -294,16 +275,40 @@ void systemInit() {
 
     // Initialize PORTA IO pins (UV PWM, Buzzer, Heartbeat LED and Test LED)
     PORT_IO_INIT();
+    
+    // read ExposureTime and IntensityValue from EEPROM
+    readFromEE();
 
     // Initialize panel LCD and buttons
     panelInit(exposureIntensity_percent, exposureTime_sec);
 
     // set up timer to run at 100ms period with high priority interrupt
     TIMER_INIT(TIMER_PERIOD_MS, HIGH_PRIORITY_INT);
-
-    // read ExposureTime and IntensityValue from EEPROM
-
+    
     // Update Display with Timer and Intensity Values
 
     systemIdle();
+}
+
+void saveToEE() {
+  char lo, hi;
+
+  lo = exposureTime_sec & 0xFF;
+  hi = (exposureTime_sec >> 8) & 0xFF;
+
+  Write_b_eep(0x00, lo);
+  Write_b_eep(0x01, hi);
+
+  Write_b_eep(0x02, exposureIntensity_percent);
+
+}
+
+void readFromEE() {
+  char lo, hi;
+
+  lo = Read_b_eep(0x00);
+  hi = Read_b_eep(0x01);
+  exposureTime_sec = lo + (hi * 256);
+
+  exposureIntensity_percent = Read_b_eep(0x02);
 }

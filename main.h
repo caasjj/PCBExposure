@@ -97,6 +97,8 @@ void            systemInit(void);
 void            systemRun(void);
 void            systemIdle(void);
 void            systemProcessCommand(char);
+void            saveToEE(void);
+void            readFromEE(void);
 
 #ifdef	__cplusplus
 }
