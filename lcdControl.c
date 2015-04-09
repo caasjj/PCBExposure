@@ -9,7 +9,7 @@ char heartOff[2][2]   = {LCD_HEARTBEAT1_OFF_CHAR, LCD_HEARTBEAT2_OFF_CHAR};
 
 void LCDInit(void) {
 
-  OpenXLCD(FOUR_BIT & LINES_5X7);
+  OpenXLCD(BUS_WIDTH & LINES_5X7);
 
   while (BusyXLCD());
 

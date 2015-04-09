@@ -20,7 +20,7 @@ extern "C" {
 #pragma config OSC    = INTIO7, FCMEN   = OFF,     IESO   = OFF                  // CONFIG1H
 #pragma config PWRT   = OFF,    BOREN   = SBORDIS, BORV   = 3                    // CONFIG2L
 #pragma config WDT    = OFF,    WDTPS   = 32768                                  // CONFIG2H
-#pragma config MCLRE  = ON,     LPT1OSC = OFF,     PBADEN = OFF, CCP2MX = PORTBE // CONFIG3H
+#pragma config MCLRE  = ON,     LPT1OSC = OFF,     PBADEN = OFF, CCP2MX = PORTC // CONFIG3H
 #pragma config STVREN = ON,     LVP     = OFF,     XINST  = OFF                  // CONFIG4L
 #pragma config CP0    = OFF,    CP1     = OFF,     CP2    = OFF, CP3    = OFF    // CONFIG5L
 #pragma config CPB    = OFF,    CPD     = OFF                                    // CONFIG5H

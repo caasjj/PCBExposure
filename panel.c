@@ -96,11 +96,15 @@ void panelInit(signed char intensity, int time) {
 
   OpenADC(config, config2, port_config);
 
+  panelSetSystemOnOffStatusLed(1);
+    
   LCDInit();
   LCDUpdateLevel(intensity);
   LCDUpdateUVStatus(0);
   LCDUpdateTimer(time);
 
+
+  
   _intensity = intensity;
   _time = time;
 }

@@ -11,6 +11,11 @@
 #include "xlcd.h"
 #include "delays.h"
 
+#ifdef  BIT8
+#define BUS_WIDTH               EIGHT_BIT
+#else
+#define BUS_WIDTH               FOUR_BIT
+#endif
 #define LCD_TITLE_ROW		0x00
 #define LCD_DATA_ROW		0x01
 
