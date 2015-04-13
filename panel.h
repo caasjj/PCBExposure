@@ -30,17 +30,25 @@ extern "C" {
 #define PANEL_START_STOP_BUTTON_PORT            TRISA
 #define PANEL_START_STOP_BUTTON_PIN             2
 #define PANEL_SYSTEM_ON_OFF_STATUS_LED_PORT     TRISA
-#define PANEL_SYSTEM_ON_OFF_STATUS_LED_PIN      3
-#define PANEL_SYSTEM_ON_OFF_STATUS_LED_LATCH    LATA3
+#define PANEL_SYSTEM_ON_OFF_STATUS_LED_PIN      4
+#define PANEL_SYSTEM_ON_OFF_STATUS_LED_LATCH    LATA4
 #define PANEL_UV_ON_OFF_STATUS_LED_PORT         TRISA
-#define PANEL_UV_ON_OFF_STATUS_LED_PIN          4
-#define PANEL_UV_ON_OFF_STATUS_LED_LATCH        LATA4
+#define PANEL_UV_ON_OFF_STATUS_LED_PIN          5
+#define PANEL_UV_ON_OFF_STATUS_LED_LATCH        LATA5
+
+//#define PANEL_LCD_BACKLIGHT_ON_OFF_PORT         TRISB
+//#define PANEL_LCD_BACKLIGHT_ON_OFF_PIN          4
+//#define PANEL_LCD_BACKLIGHT_ON_OFF_LATCH        LATA4
+
+/** L C D    B A C K L I G H T   M A C R O *************************************/
+//#define PANEL_LCD_BACKLIGHT(x)                  PANEL_LCD_BACKLIGHT_ON_OFF_LATCH(x)
 
 /** C O N F I G U R E   A D C   ************************************************/
 // for use with 'chan' parameter in _panelReadInput( chan )
 #define PANEL_SEL_SWITCH                        ADC_CH0
 #define PANEL_UP_DOWN_BUTTON                    ADC_CH1
 #define PANEL_START_STOP_BUTTON                 ADC_CH2
+#define PANEL_LCD_BACKLIGHT_ON_OFF_BUTTON       ADC_CH3
 
 #define ADC_CONFIG2                             PANEL_SEL_SWITCH    | \
                                                 ADC_INT_OFF         | \
@@ -50,7 +58,7 @@ extern "C" {
                                                 ADC_RIGHT_JUST      | \
                                                 ADC_4_TAD
 
-#define ADC_PORT_CONFIG                         ADC_3ANA  // AN0, AN1 and AN2 are analog - 3 analog channels
+#define ADC_PORT_CONFIG                         ADC_4ANA  // AN0, AN1, AN2 and AN3 are analog - 4 analog channels
 
 #define ADC_INT_CLR()                           ADIF = 0
 #define ADC_SWITCH_HIGH_THRESHOLD               0x240
@@ -71,6 +79,9 @@ extern "C" {
 #define START_STOP_HELD                         21
 #define START_STOP_RELEASED                     22
 
+#define LCD_BACKLIGHT_PRESSED                   30
+#define LCD_BACKLIGHT_HELD                      31
+#define LCD_BACKLIGHT_RELEASED                  32
 /** F U N C T I O N   D E C L A R A T I O N S  *********************************/
 void panelInit(signed char, int );
 unsigned char panelGetCommand(void);
@@ -88,7 +99,10 @@ void panelToggleHeartbeat();
 void panelUpdateUi(signed char, int);
 void panelUpdateValues(signed char , int );
 
+void panelToggleBacklight(void);
+
 int _panelReadInput(unsigned char);
+
 
 /** U I   C O N F I G U R A T I O N */
 #define PANEL_UI_IDLE                         0

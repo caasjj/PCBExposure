@@ -7,19 +7,24 @@ char heartBeatMode  = LCD_HEARTBEAT_MODE_IDLE;
 char heartOn[2][2]    = {LCD_HEARBEAT1_ON_CHAR, LCD_HEARBEAT2_ON_CHAR};
 char heartOff[2][2]   = {LCD_HEARTBEAT1_OFF_CHAR, LCD_HEARTBEAT2_OFF_CHAR};
 
+char _backlightState = 0;
+
 void LCDInit(void) {
+
+    LCD_BACKLIGHT_INIT();
 
   OpenXLCD(BUS_WIDTH & LINES_5X7);
 
   while (BusyXLCD());
 
   // This is the important line that was keeping
-  // the interface from workign properly. It resets the hd44780 chip.
+  // the interface from working properly. It resets the hd44780 chip.
   // For 8 bit interface, you also need to make sure T1OSCEN=0
   // if using PORTC as an output port for controlling the LCD.
   WriteCmdXLCD(0x01);
 
   _LCDTitleRow();
+
   LCDToggleHeartbeat();
 
 }
@@ -65,14 +70,15 @@ void LCDUpdateTimer(unsigned int exposureTime) {
   _LCDWrite(LCD_DATA_ROW, LCD_TIME_LOC, s);
 }
 
-void LCDBacklightOn() {
-
+void LCDBacklight(char state) {
+    _backlightState = state;
+    LCD_BACKLIGHT(_backlightState);
 }
 
-void LCDBackLightOff() {
-
+void LCDBacklightToggle() {
+    _backlightState = ~_backlightState;
+    LCD_BACKLIGHT(_backlightState);
 }
-
 
 void _LCDTitleRow() {
   char titleRow[] = "Level UV Time";

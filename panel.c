@@ -6,10 +6,11 @@
 #define HELD          1
 #define RELEASED      2
 
-int         _selSwitchState       = RELEASED;
-int         _upButtonState        = RELEASED;
-int         _downButtonState      = RELEASED;
-int         _startStopButtonState = RELEASED;
+int         _selSwitchState             = RELEASED;
+int         _upButtonState              = RELEASED;
+int         _downButtonState            = RELEASED;
+int         _startStopButtonState       = RELEASED;
+int         _lcdBacklightButtonState    = RELEASED;
 signed char _intensity;
 int         _time;
 
@@ -77,6 +78,21 @@ unsigned char panelGetCommand(){
     return COUNT_DOWN_RELEASED(countMode);
   }
 
+  int lcdBacklightButton = _panelReadInput( PANEL_LCD_BACKLIGHT_ON_OFF_BUTTON );
+  if ( lcdBacklightButton < ADC_SWITCH_LOW_THRESHOLD) {
+
+    if (_lcdBacklightButtonState == RELEASED) {
+      _lcdBacklightButtonState = PRESSED;
+      return LCD_BACKLIGHT_PRESSED;
+    }
+
+      _lcdBacklightButtonState = HELD;
+      return LCD_BACKLIGHT_HELD;
+
+  } else if (_lcdBacklightButtonState != RELEASED) {
+    _lcdBacklightButtonState = RELEASED;
+    return LCD_BACKLIGHT_RELEASED;
+  }
   // if select switch is set but neither button is pressed
   return NULL_COMMAND;
 }
@@ -89,7 +105,7 @@ void panelInit(signed char intensity, int time) {
   MAKE_PORT_INPUT(PANEL_START_STOP_BUTTON_PORT, PANEL_START_STOP_BUTTON_PIN);
   MAKE_PORT_OUTPUT(PANEL_SYSTEM_ON_OFF_STATUS_LED_PORT, PANEL_SYSTEM_ON_OFF_STATUS_LED_PIN );
   MAKE_PORT_OUTPUT(PANEL_UV_ON_OFF_STATUS_LED_PORT, PANEL_UV_ON_OFF_STATUS_LED_PIN );
-
+  //MAKE_PORT_OUTPUT(PANEL_LCD_BACKLIGHT_ON_OFF_PORT, PANEL_LCD_BACKLIGHT_ON_OFF_PIN);
   unsigned char config=ADC_CONFIG;
   unsigned char config2 = ADC_CONFIG2;
   unsigned char port_config = ADC_PORT_CONFIG;
@@ -102,8 +118,6 @@ void panelInit(signed char intensity, int time) {
   LCDUpdateLevel(intensity);
   LCDUpdateUVStatus(0);
   LCDUpdateTimer(time);
-
-
   
   _intensity = intensity;
   _time = time;
@@ -167,4 +181,8 @@ int _panelReadInput(unsigned char channel){
 
   return value;
 
+}
+
+void panelToggleBacklight() {
+    LCDBacklightToggle();
 }

@@ -89,12 +89,16 @@ void main (void)
 
       command = panelGetCommand();
 
+      if (command == LCD_BACKLIGHT_PRESSED) {
+          panelToggleBacklight();
+      }
       if (systemState == SYSTEM_RUNNING_STATE) {
 
           if (exposureTimer_ticks) {
             exposureTimer_ticks--;
             if (!exposureTimer_ticks) {
             systemIdle();
+            buzz(2000);
             } else if (systemTime_tick % (TIMER_FREQ_HZ>>1) == 0){
                 panelUpdateUi(exposureIntensity_percent, exposureTimer_ticks / TIMER_FREQ_HZ );
             }
@@ -102,6 +106,7 @@ void main (void)
           
           if(systemState == SYSTEM_RUNNING_STATE && command == START_STOP_RELEASED) {
            systemIdle();
+           buzz(1000);
           }
           
       }
@@ -242,13 +247,14 @@ void systemProcessCommand(char cmd) {
 void systemIdle() {
 
   // turn off UV
-  SYSTEM_UV_PWM(0);
+  SET_UV_INTENSITY_PERCENT(0);
+  UV(OFF);
   
   // reset UV timer tick counter
   exposureTimer_ticks = TIMER_SEC_TO_TICKS(exposureTime_sec);
 
   panelSetUiState(PANEL_UI_IDLE);
-
+  
   systemState = SYSTEM_IDLE_STATE;
   
 }
@@ -259,7 +265,8 @@ void systemRun() {
   exposureTimer_ticks = TIMER_SEC_TO_TICKS(exposureTime_sec);
   
   // turn on UV
-  SYSTEM_UV_PWM(1);
+  SET_UV_INTENSITY_PERCENT(exposureIntensity_percent);
+  UV(ON);
 
   panelSetUiState(PANEL_UI_RUNNING);
 
@@ -286,7 +293,9 @@ void systemInit() {
     TIMER_INIT(TIMER_PERIOD_MS, HIGH_PRIORITY_INT);
     
     // Update Display with Timer and Intensity Values
+    SYSTEM_UV_PWM_INIT();
 
+    buzzerOff();
     systemIdle();
 }
 
@@ -311,4 +320,41 @@ void readFromEE() {
   exposureTime_sec = lo + (hi * 256);
 
   exposureIntensity_percent = Read_b_eep(0x02);
+
+  if (exposureTime_sec < 0) {
+      exposureTime_sec = 10;
+      exposureIntensity_percent = 50;
+  }
+}
+
+void uvOn(int level) {
+
+}
+
+void uvOff() {
+
+}
+
+void buzzerOn() {
+    BUZZER(ON);
+}
+
+void buzzerOff() {
+    BUZZER(OFF);
+}
+
+void _setupUvPDM() {
+    // not using peripheral library .. it sucks
+    SYSTEM_UV_PWM_INIT();
+    
+    // set PWM Period by setting TMR2's PR2 register
+
+    // Configure CCP
+}
+
+void buzz(int length_ms) {
+    unsigned int start = systemTime_tick;
+//    BUZZER(ON);
+//    while(systemTime_tick < start + (length_ms * TIMER_CLK_FREQ_kHZ));
+//    BUZZER(OFF);
 }

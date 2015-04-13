@@ -41,6 +41,8 @@ extern "C" {
 #define SYSTEM_RUNNING_STATE                    2
 #define SYSTEM_BUTTON_HOLD_TIME_MS              200 // must be integer multiple of system timer tick
 #define SYSTEM_MAX_EXPOSURE_TIME_S              300
+#define ON                                      1
+#define OFF                                     0
 
 /**  G E R I C   U S E   M A C R O S   ************************************/
 #define MAKE_PORT_OUTPUT(port, pin)             port &= ~(1 << pin)
@@ -48,27 +50,51 @@ extern "C" {
 
     
 /** C O N F I G U R E   S Y S T E M   P I N S  ***************************/
-#define SYSTEM_UV_PWM_TRIS                      TRISA
-#define SYSTEM_UV_PWM_PIN                       5
-#define SYSTEM_UV_PWM_LATCH                     LATA5
-#define SYSTEM_BUZZER_TRIS                      TRISA
-#define SYSTEM_BUZZER_PIN                       6
-#define SYSTEM_BUZZER_LATCH                     LATA6
+#define SYSTEM_DIAG_TRIS                        TRISC
+#define SYSTEM_DIAG_PIN                         0
+#define SYSTEM_DIAG_LATCH                       LATC0
 
-#define SYSTEM_UV_PWM(x)                        SYSTEM_UV_PWM_LATCH=x
+#define SYSTEM_UV_BIAS_PWM_TRIS                 TRISC
+#define SYSTEM_UV_BIAS_PWM_PIN                  1
+#define SYSTEM_UV_BIAS_CCPCON                   CCP2CON
+#define SYSTEM_UV_BIAS_CCPRL                    CCPR2L
 
+#define SYSTEM_UV_SUPPLY_TRIS                   TRISC
+#define SYSTEM_UV_SUPPLY_PIN                    2
+#define SYSTEM_UV_SUPPLY_LATCH                  LATC2
+
+#define SYSTEM_BUZZER_TRIS                      TRISC
+#define SYSTEM_BUZZER_PIN                       3
+#define SYSTEM_BUZZER_LATCH                     LATC3
+
+#define SYSTEM_UV_PWM_POLARITY                  -1
+#define SYSTEM_UV_PWM_MAX                       (SYSTEM_UV_PWM_POLARITY > 0) * 0x3E8
+#define SYSTEM_UV_PWM_MIN                       (SYSTEM_UV_PWM_POLARITY < 0) * 0x3E8
+
+#define SET_UV_PWM(x)                           SYSTEM_UV_BIAS_CCPCON |= (x | 0x3) << 4; \
+                                                SYSTEM_UV_BIAS_CCPRL = (x >> 2) & 0xFF
+
+/** I O    D R I V E R    M A C R O S ************************************/
+#define SYSTEM_DIAG(OnOff)                      SYSTEM_DIAG_LATCH=OnOff
+#define SET_UV_INTENSITY_PERCENT(x)             SET_UV_PWM( SYSTEM_UV_PWM_MIN + SYSTEM_UV_PWM_POLARITY*x*10 )
+#define UV(OnOff)                               SYSTEM_UV_SUPPLY_LATCH=OnOff
+#define BUZZER(OnOff)                           SYSTEM_BUZZER_LATCH=OnOff
+    
 /** C O N F I G U R E    D I A G   P I N S   *****************************/
-#define SYSTEM_HEARTBEAT_LED_TRIS               TRISC
-#define SYSTEM_HEARTBEAT_LED_PIN                1
-#define SYSTEM_HEARTBEAT_LED_LATCH              LATC1
 #define SYSTEM_TEST_LED_TRIS                    TRISC
-#define SYSTEM_TEST_LED_PIN                     2
-#define SYSTEM_TEST_LED_LATCH                   LATC2
+#define SYSTEM_TEST_LED_PIN                     0
+#define SYSTEM_TEST_LED_LATCH                   LATC0
 
-#define PORT_IO_INIT()                          MAKE_PORT_OUTPUT(SYSTEM_UV_PWM_TRIS, SYSTEM_UV_PWM_PIN ); \
-                                                MAKE_PORT_OUTPUT(SYSTEM_BUZZER_TRIS, SYSTEM_BUZZER_PIN ); \
-                                                MAKE_PORT_OUTPUT(SYSTEM_HEARTBEAT_LED_TRIS, SYSTEM_HEARTBEAT_LED_PIN); \
-                                                MAKE_PORT_OUTPUT(SYSTEM_TEST_LED_TRIS, SYSTEM_TEST_LED_PIN);
+#define PORT_IO_INIT()                          MAKE_PORT_OUTPUT(SYSTEM_DIAG_TRIS, SYSTEM_DIAG_PIN); \
+                                                MAKE_PORT_OUTPUT(SYSTEM_UV_SUPPLY_TRIS, SYSTEM_UV_SUPPLY_PIN ); \
+                                                MAKE_PORT_OUTPUT(SYSTEM_BUZZER_TRIS, SYSTEM_BUZZER_PIN )
+                                                
+#define SYSTEM_UV_PWM_INIT()                    MAKE_PORT_OUTPUT(SYSTEM_UV_BIAS_PWM_TRIS, SYSTEM_UV_BIAS_PWM_PIN);\
+                                                SYSTEM_UV_BIAS_CCPCON |= 0x0C; \
+                                                PR2=0xFF; \
+                                                T2CON=0x04; \
+                                                SET_UV_INTENSITY_PERCENT(0); \
+                                                UV(OFF);
 
 /** C O N F I G U R E    T I M E R 1  ************************************/
 #define TIMER_PRESCALER                         8
@@ -99,7 +125,11 @@ void            systemIdle(void);
 void            systemProcessCommand(char);
 void            saveToEE(void);
 void            readFromEE(void);
-
+void            uvOn(int);
+void            uvOff(void);
+void            buzzerOn(void);
+void            buzzerOff(void);
+void            buzz(int);
 #ifdef	__cplusplus
 }
 #endif
